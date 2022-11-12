@@ -14,13 +14,23 @@ module.exports = {
                 test: /\.js$/,
                 exclude: /node-modules/,
                 use:['babel-loader']
-            }
+            },
+            {
+                test: /\.css$/i,
+                use:[
+                    {
+                        loader:"style-loader",
+                        options : { injectType : "styleTag"}
+                    },
+                    "css-loader"
+                ]
+            },
         ]
     },
     devServer:{
         static: path.join(__dirname, 'public/'),
         devMiddleware : {            
-            publicPath : '/dist/'
+            //publicPath : '/dist/'
         },
         port:3000,
         hot:"only"
