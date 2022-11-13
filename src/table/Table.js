@@ -1,47 +1,33 @@
-import React, { useState } from "react";
+import React, { useState , useRef } from "react";
 import classes from "./Table.module.css";
 
 function Table({ issues }) {
-  const [checkedState, setCheckedState] = useState(
-    new Array(issues.length).fill({
-      checked: false,
-      backgroundColor: "#ffffff",
-    })
-  );
-  const [selectDeselectAllIsChecked, setSelectDeselectAllIsChecked] =
-    useState(false);
-  const [numCheckboxesSelected, setNumCheckboxesSelected] = useState(0);
 
-  const handleOnChange = (position) => {
-    const updatedCheckedState = checkedState.map((element, index) => {
-      if (position === index) {
-        return {
-          ...element,
-          checked: !element.checked,
-          backgroundColor: element.checked ? "#ffffff" : "#eeeeee",
-        };
-      }
-      return element;
-    });
-    setCheckedState(updatedCheckedState);
+  const [checkedById, setCheckedById ] = useState( new Set() ); 
 
-    const totalSelected = updatedCheckedState
-      .map((element) => element.checked)
-      .reduce((sum, currentState, index) => {
-        if (currentState) {
-          return sum + issues[index].value;
-        }
-        return sum;
-      }, 0);
-    setNumCheckboxesSelected(totalSelected);
+  const openIssues = issues.filter(({ status }) => status === "open");
+  const numOpenIssues = openIssues.length;
+  const numCheckedIssues = checkedById.size;
 
+  const masterToggle = useRef();
+
+  const handleOnChange = (id) => {
+
+    const updatedCheckedById  = new Set(checkedById); 
+    if( updatedCheckedById.has(id) ) {
+        updatedCheckedById.delete(id);
+    } else {
+        updatedCheckedById.add(id);
+    }
+    setCheckedById( updatedCheckedById );
+
+    const totalSelected = updatedCheckedById.size;
+    
     handleIndeterminateCheckbox(totalSelected);
   };
 
   const handleIndeterminateCheckbox = (total) => {
-    const indeterminateCheckbox = document.getElementById(
-      "custom-checkbox-selectDeselectAll"
-    );
+
     let count = 0;
 
     issues.forEach((element) => {
@@ -51,47 +37,25 @@ function Table({ issues }) {
     });
 
     if (total === 0) {
-      indeterminateCheckbox.indeterminate = false;
-      setSelectDeselectAllIsChecked(false);
+      masterToggle.current.indeterminate = false ;
     }
     if (total > 0 && total < count) {
-      indeterminateCheckbox.indeterminate = true;
-      setSelectDeselectAllIsChecked(false);
+      masterToggle.current.indeterminate = true ;
     }
     if (total === count) {
-      indeterminateCheckbox.indeterminate = false;
-      setSelectDeselectAllIsChecked(true);
+      masterToggle.current.indeterminate = false ;
     }
   };
 
   const handleSelectDeselectAll = (event) => {
     let { checked } = event.target;
-
-    const allTrueArray = [];
-    issues.forEach((element) => {
-      if (element.status === "open") {
-        allTrueArray.push({ checked: true, backgroundColor: "#eeeeee" });
-      } else {
-        allTrueArray.push({ checked: false, backgroundColor: "#ffffff" });
-      }
-    });
-
-    const allFalseArray = new Array(issues.length).fill({
-      checked: false,
-      backgroundColor: "#ffffff",
-    });
-    checked ? setCheckedState(allTrueArray) : setCheckedState(allFalseArray);
-
-    const totalSelected = (checked ? allTrueArray : allFalseArray)
-      .map((element) => element.checked)
-      .reduce((sum, currentState, index) => {
-        if (currentState && issues[index].status === "open") {
-          return sum + issues[index].value;
-        }
-        return sum;
-      }, 0);
-    setNumCheckboxesSelected(totalSelected);
-    setSelectDeselectAllIsChecked((prevState) => !prevState);
+    if( checked ) {
+        const openIssues = issues.filter(({ status }) => status === "open");
+        const updateCheckedId = openIssues.map( (element) => element.id  ) ;
+        setCheckedById( new Set(updateCheckedId));
+    }else {
+        setCheckedById( new Set());
+    }
   };
 
   return (
@@ -103,15 +67,16 @@ function Table({ issues }) {
               className={classes.checkbox}
               type={"checkbox"}
               id={"custom-checkbox-selectDeselectAll"}
+              ref={masterToggle}
               name={"custom-checkbox-selectDeselectAll"}
               value={"custom-checkbox-selectDeselectAll"}
-              checked={selectDeselectAllIsChecked}
+              checked={numOpenIssues===numCheckedIssues}
               onChange={handleSelectDeselectAll}
             />
           </th>
           <th className={classes.numChecked}>
-            {numCheckboxesSelected
-              ? `Selected ${numCheckboxesSelected}`
+            {numCheckedIssues
+              ? `Selected ${numCheckedIssues}`
               : "None selected"}
           </th>
         </tr>
@@ -124,17 +89,20 @@ function Table({ issues }) {
       </thead>
 
       <tbody>
-        {issues.map(({ name, message, status }, index) => {
+        {issues.map(({ id , name, message, status }, index) => {
           let issueIsOpen = status === "open";
-          let onClick = issueIsOpen ? () => handleOnChange(index) : null;
+          let onClick = issueIsOpen ? () => handleOnChange(id) : null;
           let stylesTr = issueIsOpen
             ? classes.openIssue
             : classes.resolvedIssue;
+          let style = {backgroundColor : checkedById.has(id) ? "#eee" : "#fff" }
+
+          
 
           return (
             <tr
               className={stylesTr}
-              style={checkedState[index]}
+              style={style} 
               key={index}
               onClick={onClick}
             >
@@ -146,8 +114,8 @@ function Table({ issues }) {
                     id={`custom-checkbox-${index}`}
                     name={name}
                     value={name}
-                    checked={checkedState[index].checked}
-                    onChange={() => handleOnChange(index)}
+                    checked={checkedById.has(id)}
+                    onChange={() => handleOnChange(id)}
                   />
                 ) : (
                   <input
